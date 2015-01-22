@@ -28,12 +28,67 @@
  */
 
 /* @(#)log.c	8.2 (Berkeley) 11/30/93 */
-#include "cdefs-compat.h"
+//#include "cdefs-compat.h"
 //__FBSDID("$FreeBSD: src/lib/msun/bsdsrc/b_log.c,v 1.9 2008/02/22 02:26:51 das Exp $");
 
-#include <openlibm_math.h>
+//#include <openlibm_math.h>
 
-#include "mathimpl.h"
+//#include "mathimpl.h"
+#include <math.h>
+#include <stdint.h>
+
+typedef union
+{
+  double value;
+  struct
+  {
+    uint32_t lsw;
+    uint32_t msw;
+  } parts;
+  struct
+  {
+    uint64_t w;
+  } xparts;
+} ieee_double_shape_type;
+
+/* Get the less significant 32 bit int from a double.  */
+
+#define GET_LOW_WORD(i,d)					\
+do {								\
+  ieee_double_shape_type gl_u;					\
+  gl_u.value = (d);						\
+  (i) = gl_u.parts.lsw;						\
+} while (0)
+
+/* Set the less significant 32 bits of a double from an int.  */
+
+#define SET_LOW_WORD(d,v)					\
+do {								\
+  ieee_double_shape_type sl_u;					\
+  sl_u.value = (d);						\
+  sl_u.parts.lsw = (v);						\
+  (d) = sl_u.value;						\
+} while (0)
+
+/*
+ * TRUNC() is a macro that sets the trailing 27 bits in the mantissa of an
+ * IEEE double variable to zero.  It must be expression-like for syntactic
+ * reasons, and we implement this expression using an inline function
+ * instead of a pure macro to avoid depending on the gcc feature of
+ * statement-expressions.
+ */
+#define	TRUNC(d)	(_b_trunc(&(d)))
+
+static __inline void
+_b_trunc(volatile double *_dp)
+{
+        //VBS
+        //uint32_t _lw;
+	uint32_t _lw;
+
+	GET_LOW_WORD(_lw, *_dp);
+	SET_LOW_WORD(*_dp, _lw & 0xf8000000);
+}
 
 /* Table-driven natural logarithm.
  *
@@ -350,13 +405,8 @@ static double logF_tail[N+1] = {
 	-.00000000000017239444525614834
 };
 
-#if 0
-DLLEXPORT double
-#ifdef _ANSI_SOURCE
-log(double x)
-#else
-log(x) double x;
-#endif
+double
+openlibm_log(double x)
 {
 	int m, j;
 	double F, f, g, q, u, u2, v, zero = 0.0, one = 1.0;
@@ -413,54 +463,4 @@ log(x) double x;
 	u2 = (u2 + logF_tail[j]) + q;			/* tiny */
 	u2 += logF_tail[N]*m;
 	return (u1 + u2);
-}
-#endif
-
-/*
- * Extra precision variant, returning struct {double a, b;};
- * log(x) = a+b to 63 bits, with a rounded to 26 bits.
- */
-struct Double
-#ifdef _ANSI_SOURCE
-__log__D(double x)
-#else
-__log__D(x) double x;
-#endif
-{
-	int m, j;
-	double F, f, g, q, u, v, u2;
-	volatile double u1;
-	struct Double r;
-
-	/* Argument reduction: 1 <= g < 2; x/2^m = g;	*/
-	/* y = F*(1 + f/F) for |f| <= 2^-8		*/
-
-	m = logb(x);
-	g = ldexp(x, -m);
-	if (m == -1022) {
-		j = logb(g), m += j;
-		g = ldexp(g, -j);
-	}
-	j = N*(g-1) + .5;
-	F = (1.0/N) * j + 1;
-	f = g - F;
-
-	g = 1/(2*F+f);
-	u = 2*f*g;
-	v = u*u;
-	q = u*v*(A1 + v*(A2 + v*(A3 + v*A4)));
-	if (m | j)
-		u1 = u + 513, u1 -= 513;
-	else
-		u1 = u, TRUNC(u1);
-	u2 = (2.0*(f - F*u1) - u1*f) * g;
-
-	u1 += m*logF_head[N] + logF_head[j];
-
-	u2 +=  logF_tail[j]; u2 += q;
-	u2 += logF_tail[N]*m;
-	r.a = u1 + u2;			/* Only difference is here */
-	TRUNC(r.a);
-	r.b = (u1 - r.a) + u2;
-	return (r);
 }

@@ -1,4 +1,4 @@
-
+#include <stdint.h>
 /* @(#)e_log.c 1.3 95/01/18 */
 /*
  * ====================================================
@@ -11,8 +11,8 @@
  * ====================================================
  */
 
-#include <sys/cdefs.h>
-__FBSDID("$FreeBSD$");
+//#include <sys/cdefs.h>
+//__FBSDID("$FreeBSD$");
 
 /* __ieee754_log(x)
  * Return the logrithm of x
@@ -67,8 +67,44 @@ __FBSDID("$FreeBSD$");
 
 #include <float.h>
 
-#include "math.h"
-#include "math_private.h"
+//#include "math.h"
+//#include "math_private.h"
+typedef union
+{
+  double value;
+  struct
+  {
+    uint32_t lsw;
+    uint32_t msw;
+  } parts;
+  struct
+  {
+    uint64_t w;
+  } xparts;
+} ieee_double_shape_type;
+
+#define EXTRACT_WORDS(ix0,ix1,d)				\
+do {								\
+  ieee_double_shape_type ew_u;					\
+  ew_u.value = (d);						\
+  (ix0) = ew_u.parts.msw;					\
+  (ix1) = ew_u.parts.lsw;					\
+} while (0)
+
+#define GET_HIGH_WORD(i,d)					\
+do {								\
+  ieee_double_shape_type gh_u;					\
+  gh_u.value = (d);						\
+  (i) = gh_u.parts.msw;						\
+} while (0)
+
+#define SET_HIGH_WORD(d,v)					\
+do {								\
+  ieee_double_shape_type sh_u;					\
+  sh_u.value = (d);						\
+  sh_u.parts.msw = (v);						\
+  (d) = sh_u.value;						\
+} while (0)
 
 static const double
 ln2_hi  =  6.93147180369123816490e-01,	/* 3fe62e42 fee00000 */
@@ -86,11 +122,11 @@ static const double zero   =  0.0;
 static volatile double vzero = 0.0;
 
 double
-__ieee754_log(double x)
+__fb_ieee754_log(double x)
 {
 	double hfsq,f,s,z,R,w,t1,t2,dk;
 	int32_t k,hx,i,j;
-	u_int32_t lx;
+	uint32_t lx;
 
 	EXTRACT_WORDS(hx,lx,x);
 

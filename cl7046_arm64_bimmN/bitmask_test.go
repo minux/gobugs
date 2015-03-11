@@ -30,6 +30,11 @@
 
 package arm64
 
+import (
+	"fmt"
+	"testing"
+)
+
 type Mask struct {
 	s uint8
 	e uint8
@@ -37,7 +42,7 @@ type Mask struct {
 	v uint64
 }
 
-// bitmasks map 
+// bitmasks map
 var bitmasks = []Mask{
 	{1, 64, 0, 0x00000000000001},
 	{1, 64, 63, 0x00000000000002},
@@ -5395,4 +5400,16 @@ func findmask(v uint64) *Mask {
 	}
 
 	return nil
+}
+
+var sink *Mask
+
+func BenchmarkLUT(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		sink = findmask(0xfffffffffffffffe)
+	}
+}
+
+func TestLUT(t *testing.T) {
+	fmt.Println(findmask(0xfffffffffffffffe))
 }

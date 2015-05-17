@@ -1,4 +1,4 @@
-To run the test, first download TestU01 from
+To run the test:
 
 	wget http://simul.iro.umontreal.ca/testu01/TestU01.zip
 	unzip TestU01.zip
